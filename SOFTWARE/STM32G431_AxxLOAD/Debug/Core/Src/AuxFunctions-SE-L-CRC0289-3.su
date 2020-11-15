@@ -1,0 +1,13 @@
+AuxFunctions.c:49:6:debugPrintln	24	static
+AuxFunctions.c:60:10:adc2Temperature	24	static
+AuxFunctions.c:76:6:debugPrint	16	static
+AuxFunctions.c:82:6:printHELP	24	static
+AuxFunctions.c:105:6:BEEP	16	static
+AuxFunctions.c:113:6:MCP4725_write	24	static
+AuxFunctions.c:130:10:ADS1115_read	32	static
+AuxFunctions.c:192:6:setCC	16	static
+AuxFunctions.c:197:6:setIdle	4	static
+AuxFunctions.c:202:10:stringToInt	24	static
+AuxFunctions.c:214:6:setFanSpeed	24	static
+AuxFunctions.c:222:6:autoFanSpeed	16	static
+AuxFunctions.c:238:6:printStatus	32	static
