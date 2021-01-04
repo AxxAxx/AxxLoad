@@ -29,7 +29,6 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32g4xx_hal.h"
-#include "stm32g4xx_ll_pwr.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -63,16 +62,22 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define FANIN_Pin GPIO_PIN_0
 #define FANIN_GPIO_Port GPIOA
-#define BUZZER_Pin GPIO_PIN_1
-#define BUZZER_GPIO_Port GPIOA
-#define DISCHARGE_LED_Pin GPIO_PIN_4
-#define DISCHARGE_LED_GPIO_Port GPIOA
-#define OVERTEMP_Pin GPIO_PIN_7
-#define OVERTEMP_GPIO_Port GPIOA
+#define FET1_TEMP_Pin GPIO_PIN_1
+#define FET1_TEMP_GPIO_Port GPIOA
+#define FET2_TEMP_Pin GPIO_PIN_4
+#define FET2_TEMP_GPIO_Port GPIOA
+#define PCB_TEMP_Pin GPIO_PIN_7
+#define PCB_TEMP_GPIO_Port GPIOA
+#define BUZZER_Pin GPIO_PIN_0
+#define BUZZER_GPIO_Port GPIOB
 #define FAN_PWM_Pin GPIO_PIN_8
 #define FAN_PWM_GPIO_Port GPIOA
 #define BILED_1_Pin GPIO_PIN_11
 #define BILED_1_GPIO_Port GPIOA
+#define DISCHARGE_LED_Pin GPIO_PIN_12
+#define DISCHARGE_LED_GPIO_Port GPIOA
+#define OVERTEMP_Pin GPIO_PIN_4
+#define OVERTEMP_GPIO_Port GPIOB
 #define BILED_2_Pin GPIO_PIN_5
 #define BILED_2_GPIO_Port GPIOB
 #define LED_Pin GPIO_PIN_8

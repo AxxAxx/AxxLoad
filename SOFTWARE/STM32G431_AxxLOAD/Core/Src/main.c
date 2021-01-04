@@ -18,7 +18,6 @@
   */
 
 /* USER CODE END Header */
-
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
@@ -48,12 +47,17 @@ void substring(char [], char[], int, int);
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
+
 I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
 
@@ -79,14 +83,14 @@ uint32_t integrationTime = 0;
 uint32_t milliAmpHours = 0;
 uint32_t milliWattHours = 0;
 uint16_t setCurrent = 0;           // interval at which to blink (milliseconds)
-float voltageCompensationConstant = 3.5614330954;
-float currentCompensationConstant = 1.34733435793;
+float voltageCompensationConstant = 3.5501359246;
+float currentCompensationConstant = 1.01125769786;
 float temperatureCompensationConstant = 1; //VOLT: 1.98 (16 deg) - 0.065 (152 deg)
 unsigned char ADSwrite[6];
 
 uint16_t maxTemp = 100;
 uint16_t maxAmpDiff = 0;
-uint16_t maxWatt = 200;
+uint16_t maxWatt = 500;
 uint16_t maxCurrent = 20;
 
 uint16_t minVolt = 0;
@@ -96,6 +100,8 @@ int16_t ADS11115_CURRENT = 0;
 int16_t ADS11115_TEMPERATURE = 0;
 
 
+
+
 struct statusValues {
 	uint32_t   timestamp;
 	uint16_t   temperature;
@@ -103,6 +109,9 @@ struct statusValues {
 	uint16_t   setPower;
 	uint16_t   measuredCurrent;
 	uint16_t   measuredVoltage;
+	uint16_t   MOSFET1_Temp;
+	uint16_t   MOSFET2_Temp;
+	uint16_t   PCB_Temp;
 	uint32_t   measuredPower;
 	float   amperehours;
 	float   watthours;
@@ -120,6 +129,10 @@ static void MX_TIM1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_ADC1_Init(void);
+static void MX_ADC2_Init(void);
+static void MX_TIM3_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 USART2_IRQHandler();
 /* USER CODE END PFP */
@@ -179,7 +192,6 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	//Connect ADDR pin to GND and I2C slave adress will be 0X48 .
 	unsigned char ADSwrite[6];
-	int16_t *ADS11115_Readings[4];
 	int16_t voltage[3];
 	struct statusValues my_statusValues;        /* Declare Book1 of type Book */
 	my_statusValues.amperehours=0;
@@ -209,13 +221,17 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM4_Init();
   MX_TIM2_Init();
+  MX_ADC1_Init();
+  MX_ADC2_Init();
+  MX_TIM3_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-	HAL_TIM_Base_Start(&htim4);
-	HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_2); //Start Pwm signal on PB-6 Pin
 	HAL_TIM_Base_Start(&htim1);
 	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1); //Start Pwm signal on PB-6 Pin
-	HAL_TIM_Base_Start(&htim2);
-	HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2); //Start Pwm signal on PB-6 Pin
+
+	HAL_TIM_Base_Start(&htim3);
+	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_3); //Start Pwm signal on PB-6 Pin
+
 	HAL_UART_Receive_IT(&huart2, &byte, 1);//Start the interrupt reception mode
   /* USER CODE END 2 */
 
@@ -227,13 +243,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-	//*ADS11115_Readings = ADS1115_read(&hi2c1,&huart2);
-
-
-
-
-
 
 
 
@@ -274,28 +283,31 @@ int main(void)
 	    		}
 
 
+	    // Get ADC value
+	    HAL_ADC_Start(&hadc1);
+	    HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+	    my_statusValues.MOSFET1_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc1),4096);
 
+	    HAL_ADC_Start(&hadc2);
+	    HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
+	    my_statusValues.MOSFET2_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc2),4096);
 
-
-
-
-
-
-
-
-
+	    HAL_ADC_Start(&hadc2);
+	    HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
+	    my_statusValues.PCB_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc2),4096);
 
 
 
 	my_statusValues.measuredVoltage = voltage[0] * voltageCompensationConstant;
 	my_statusValues.measuredCurrent = voltage[1] * currentCompensationConstant;
-	my_statusValues.temperature = adc2Temperature(voltage[2]);
+	my_statusValues.temperature = adc2Temperature(voltage[2],16628);
+
 	my_statusValues.measuredPower = (my_statusValues.measuredVoltage*my_statusValues.measuredCurrent)/1000;
 	my_statusValues.timestamp = (HAL_GetTick()-zeroTimeValue);
 
 	integrationTime = HAL_GetTick()-previousMillis_INTEGRATION;
 	my_statusValues.amperehours = my_statusValues.amperehours + integrationTime * my_statusValues.measuredCurrent/3600000.0;
-	my_statusValues.watthours = my_statusValues.watthours + integrationTime * my_statusValues.measuredCurrent * my_statusValues.measuredVoltage /3600000000.0;
+	my_statusValues.watthours = my_statusValues.watthours + (integrationTime * my_statusValues.measuredCurrent/3600000.0) * (my_statusValues.measuredVoltage /1000.0);
 	previousMillis_INTEGRATION = HAL_GetTick();
 
 
@@ -304,7 +316,7 @@ int main(void)
 	MCP4725_write(&hi2c1, my_statusValues.setCurrent);
 
 if (line_valid==1){ // A new line has arrived
-	BEEP(&htim2);
+	BEEP(&htim3);
 	line_valid = 0; // clear pending flag
 	debugPrint(&huart2, "Sent command: ");
 	debugPrintln(&huart2, line_buffer);
@@ -320,7 +332,7 @@ if (line_valid==1){ // A new line has arrived
 		printHELP(&huart2,my_statusValues);}
 
 	else if(strncmp(array[0], "fs" ,10) == 0){
-		if (strncmp(array[1], "A" ,10) == 0){
+		if ((strncmp(array[1], "A" ,10) == 0) || (strncmp(array[1], "a" ,10) == 0)){
 			autoFanSpeedMode=true;
 			debugPrintln(&huart2, "Setting fan speed to Auto");}
 		else{command_value = stringToInt(array[1]);
@@ -331,7 +343,13 @@ if (line_valid==1){ // A new line has arrived
 
 	else if(strncmp(array[0], "mv" ,10) == 0){
 		command_value = stringToInt(array[1]);
-		minVolt = command_value; }
+		minVolt = command_value;
+	  	debugPrint(&huart2, "Setting min voltage to: ");
+	  	debugPrint(&huart2, array[1]);
+
+	  	debugPrintln(&huart2, "mV");
+
+		}
 
 	else if(strncmp(array[0], "cc" ,10) == 0){
 		if (stringToInt(array[1]) <= 20000){
@@ -340,19 +358,19 @@ if (line_valid==1){ // A new line has arrived
 		}
 
 		else{
-			debugPrintln(&huart2, "Requested current is too high...");}
+			debugPrintln(&huart2, "Requested current is too high... Max current is 20 A");}
 		}
 
 	else if(strncmp(array[0], "cp" ,10) == 0){
 		my_statusValues.setPower = stringToInt(array[1]);
-		if (my_statusValues.setPower <= 200){
+		if (my_statusValues.setPower <= 250){
 			my_statusValues.setCurrent = 1000000.0*my_statusValues.setPower/my_statusValues.measuredVoltage;
 			reportStatus = true;
 			CW_MODE = true;
 		}
 
 		else{
-			debugPrintln(&huart2, "Requested power is too high...");}
+			debugPrintln(&huart2, "Requested power is too high... Max power is 250 W");}
 		}
 
 
@@ -378,7 +396,7 @@ if (line_valid==1){ // A new line has arrived
 
 	else{
 		debugPrintln(&huart2, "Unknown command..., showing HELP");
-		printHELP(&huart2);}
+		printHELP(&huart2,my_statusValues);}
 	memset(&line_buffer, '\0', sizeof(line_buffer));
 }
 
@@ -388,10 +406,7 @@ if (line_valid==1){ // A new line has arrived
 	  HAL_GPIO_TogglePin(GPIOA, BILED_1_Pin); //Toggle LED
 	  HAL_GPIO_TogglePin(GPIOB, BILED_2_Pin); //Toggle LED
 	  HAL_GPIO_TogglePin(GPIOA,  DISCHARGE_LED_Pin); //Toggle LED
-
-	  //HAL_GPIO_WritePin(GPIOA, STATLED_Pin,GPIO_PIN_SET);               //If pressed Led Switch On
-	  //HAL_GPIO_WritePin(GPIOA, STATLED_Pin,GPIO_PIN_RESET);          //Else Led Switch Off
-
+	  HAL_GPIO_TogglePin(GPIOB,  OVERTEMP_Pin);
 
 
 
@@ -412,7 +427,7 @@ if (line_valid==1){ // A new line has arrived
 	  if(my_statusValues.measuredVoltage<minVolt){
 			my_statusValues.setCurrent = 0;
 			reportStatus = false;
-			BEEP(&htim2);
+			BEEP(&htim3);
 		  	debugPrintln(&huart2, "Min voltage reached. Stopped discharge");
 	  }
 
@@ -420,14 +435,14 @@ if (line_valid==1){ // A new line has arrived
 	  if(my_statusValues.measuredPower/1000>maxWatt){
 			my_statusValues.setCurrent = 0;
 			reportStatus = false;
-			BEEP(&htim2);
+			BEEP(&htim3);
 			debugPrintln(&huart2, "OVERPOWER, Stopped discharge");
 	  }
 
 	  if(my_statusValues.measuredCurrent/1000>maxCurrent){
 			my_statusValues.setCurrent = 0;
 			reportStatus = false;
-			BEEP(&htim2);
+			BEEP(&htim3);
 			debugPrintln(&huart2, "OVERCURRENT, Stopped discharge");
 	  }
 
@@ -435,7 +450,7 @@ if (line_valid==1){ // A new line has arrived
 	  if(my_statusValues.temperature>maxTemp*10){
 			my_statusValues.setCurrent = 0;
 			reportStatus = false;
-			BEEP(&htim2);
+			BEEP(&htim3);
 			HAL_Delay(50);
 
 			debugPrintln(&huart2, "OVERTEMP, Stopped discharge");
@@ -457,10 +472,11 @@ void SystemClock_Config(void)
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
   RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
-  /** Configure the main internal regulator output voltage 
+  /** Configure the main internal regulator output voltage
   */
   HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1);
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
@@ -469,7 +485,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
@@ -478,19 +494,144 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
     Error_Handler();
   }
-  /** Initializes the peripherals clocks 
+  /** Initializes the peripherals clocks
   */
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_I2C1;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2
+                              |RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_ADC12;
+  PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
+  PeriphClkInit.Adc12ClockSelection = RCC_ADC12CLKSOURCE_SYSCLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_MultiModeTypeDef multimode = {0};
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+  /** Common config
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.GainCompensation = 0;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.LowPowerAutoWait = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  hadc1.Init.OversamplingMode = DISABLE;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure the ADC multi-mode
+  */
+  multimode.Mode = ADC_MODE_INDEPENDENT;
+  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_2;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief ADC2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC2_Init(void)
+{
+
+  /* USER CODE BEGIN ADC2_Init 0 */
+
+  /* USER CODE END ADC2_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC2_Init 1 */
+
+  /* USER CODE END ADC2_Init 1 */
+  /** Common config
+  */
+  hadc2.Instance = ADC2;
+  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc2.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc2.Init.GainCompensation = 0;
+  hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc2.Init.LowPowerAutoWait = DISABLE;
+  hadc2.Init.ContinuousConvMode = DISABLE;
+  hadc2.Init.NbrOfConversion = 1;
+  hadc2.Init.DiscontinuousConvMode = DISABLE;
+  hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc2.Init.DMAContinuousRequests = DISABLE;
+  hadc2.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  hadc2.Init.OversamplingMode = DISABLE;
+  if (HAL_ADC_Init(&hadc2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_17;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC2_Init 2 */
+
+  /* USER CODE END ADC2_Init 2 */
+
 }
 
 /**
@@ -521,13 +662,13 @@ static void MX_I2C1_Init(void)
   {
     Error_Handler();
   }
-  /** Configure Analogue filter 
+  /** Configure Analogue filter
   */
   if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
   {
     Error_Handler();
   }
-  /** Configure Digital filter 
+  /** Configure Digital filter
   */
   if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
   {
@@ -635,7 +776,6 @@ static void MX_TIM2_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM2_Init 1 */
 
@@ -655,13 +795,59 @@ static void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 32-1;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 100;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
   {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
@@ -669,14 +855,14 @@ static void MX_TIM2_Init(void)
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM2_Init 2 */
+  /* USER CODE BEGIN TIM3_Init 2 */
 
-  /* USER CODE END TIM2_Init 2 */
-  HAL_TIM_MspPostInit(&htim2);
+  /* USER CODE END TIM3_Init 2 */
+  HAL_TIM_MspPostInit(&htim3);
 
 }
 
@@ -722,6 +908,54 @@ static void MX_TIM4_Init(void)
   /* USER CODE BEGIN TIM4_Init 2 */
 
   /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
 
 }
 
@@ -774,10 +1008,10 @@ static void MX_USART2_UART_Init(void)
 
 }
 
-/** 
+/**
   * Enable DMA controller clock
   */
-static void MX_DMA_Init(void) 
+static void MX_DMA_Init(void)
 {
 
   /* DMA controller clock enable */
@@ -806,10 +1040,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, DISCHARGE_LED_Pin|OVERTEMP_Pin|BILED_1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, BILED_1_Pin|DISCHARGE_LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, BILED_2_Pin|LED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, OVERTEMP_Pin|BILED_2_Pin|LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : FANIN_Pin */
   GPIO_InitStruct.Pin = FANIN_Pin;
@@ -817,15 +1051,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(FANIN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DISCHARGE_LED_Pin OVERTEMP_Pin BILED_1_Pin */
-  GPIO_InitStruct.Pin = DISCHARGE_LED_Pin|OVERTEMP_Pin|BILED_1_Pin;
+  /*Configure GPIO pins : BILED_1_Pin DISCHARGE_LED_Pin */
+  GPIO_InitStruct.Pin = BILED_1_Pin|DISCHARGE_LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BILED_2_Pin LED_Pin */
-  GPIO_InitStruct.Pin = BILED_2_Pin|LED_Pin;
+  /*Configure GPIO pins : OVERTEMP_Pin BILED_2_Pin LED_Pin */
+  GPIO_InitStruct.Pin = OVERTEMP_Pin|BILED_2_Pin|LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -862,7 +1096,7 @@ void Error_Handler(void)
   * @retval None
   */
 void assert_failed(uint8_t *file, uint32_t line)
-{ 
+{
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */

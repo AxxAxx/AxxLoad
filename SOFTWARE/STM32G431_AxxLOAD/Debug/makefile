@@ -46,8 +46,8 @@ STM32G431_AxxLOAD.bin \
 all: STM32G431_AxxLOAD.elf secondary-outputs
 
 # Tool invocations
-STM32G431_AxxLOAD.elf: $(OBJS) $(USER_OBJS) C:\Users\seaxjoh\OneDrive\ -\ ABB\gitRepos\16_AxLoad\SOFTWARE\STM32G431_AxxLOAD\STM32G431KBTX_FLASH.ld
-	arm-none-eabi-gcc -o "STM32G431_AxxLOAD.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\seaxjoh\OneDrive - ABB\gitRepos\16_AxLoad\SOFTWARE\STM32G431_AxxLOAD\STM32G431KBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32G431_AxxLOAD.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
+STM32G431_AxxLOAD.elf: $(OBJS) $(USER_OBJS) C:\Users\seaxjoh\OneDrive\ -\ ABB\gitRepos\16_AxxLoad\SOFTWARE\STM32G431_AxxLOAD\STM32G431KBTX_FLASH.ld
+	arm-none-eabi-gcc -o "STM32G431_AxxLOAD.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\seaxjoh\OneDrive - ABB\gitRepos\16_AxxLoad\SOFTWARE\STM32G431_AxxLOAD\STM32G431KBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32G431_AxxLOAD.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

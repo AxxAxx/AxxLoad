@@ -20,7 +20,7 @@ extern bool reportStatus;
 extern bool txDone;
 extern uint32_t zeroTimeValue;
 uint16_t mcp4725Voltage = 0;
-float outputVoltageCompensationConstant = 0.1465425757;
+float outputVoltageCompensationConstant = 0.15328721307;
 float temperatureC;
 
 // resistance at 25 degrees C
@@ -40,6 +40,9 @@ struct statusValues {
 	uint16_t   setPower;
 	uint16_t   measuredCurrent;
 	uint16_t   measuredVoltage;
+	uint16_t   MOSFET1_Temp;
+	uint16_t   MOSFET2_Temp;
+	uint16_t   PCB_Temp;
 	uint32_t   measuredPower;
 	float   amperehours;
 	float   watthours;
@@ -56,9 +59,9 @@ void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
 
 }
 
-uint16_t adc2Temperature(uint16_t adcValue){
-	//25777
-	temperatureC = 16628.0 / adcValue - 1;
+uint16_t adc2Temperature(uint16_t adcValue, uint16_t adcResolution){
+
+	temperatureC = adcResolution / adcValue - 1;
 	temperatureC = SERIESRESISTOR / temperatureC;
 
   temperatureC = temperatureC / THERMISTORNOMINAL;     // (R/Ro)
@@ -86,8 +89,8 @@ void printHELP(UART_HandleTypeDef *huart, struct statusValues statusValues_1){
 	  debugPrintln(huart, "  cc <mA> - Constant current");
 	  debugPrintln(huart, "  cp <mW> - Constant power(To be implemented..)");
 	  debugPrintln(huart, "cr <mOhm> - Constant resistance(To be implemented..)");
-	  debugPrintln(huart, " fs <%/A> - Fanspeed, (0-100% OR \"A\" for Automatic)");
-	  debugPrintln(huart, "  mv <mV> - Set MIN voltage");
+	  debugPrintln(huart, " fs <%/A> - Fanspeed, (0-100% OR \"A\" for Automatic) - Default: A");
+	  debugPrintln(huart, "  mv <mV> - Set MIN voltage - Default: 0 mV");
 	  debugPrintln(huart, " log <ms> - Interval of printing status");
 	  debugPrintln(huart, "     stop - Turn current off");
 	  debugPrintln(huart, "    reset - Reset charge/energy counters");
@@ -95,7 +98,7 @@ void printHELP(UART_HandleTypeDef *huart, struct statusValues statusValues_1){
 	  debugPrintln(huart, "     help - Show this help");
 	  debugPrintln(huart, " ");
 	  debugPrintln(huart, "Status is printed out as:");
-	  debugPrintln(huart, "Timestamp[ms]; Temperature[deg C]; Set current[mA]; Measured current[mA]; Measured Voltage[mV]; Measured Power[mW]; Amperehours[mAh]; Watthours[mWh]");
+	  debugPrintln(huart, "Timestamp[ms]; Temperature - Heatsink[deg C]; Temperature - MosFET1[deg C]; Temperature - MosFET2[deg C]; Temperature - PCB[deg C]; Set current[mA]; Measured current[mA]; Measured Voltage[mV]; Measured Power[mW]; Amperehours[mAh]; Watthours[mWh]");
 	  printStatus(statusValues_1, huart);
 	  debugPrintln(huart, "|------------------------------------------|");
 	  debugPrintln(huart, " ");
@@ -103,9 +106,9 @@ void printHELP(UART_HandleTypeDef *huart, struct statusValues statusValues_1){
 
 void BEEP(TIM_HandleTypeDef *htim){
 
-	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_2, 5); //update pwm value //TIM4->CCR2 = pwm;
+	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_3, 5); //update pwm value
 	HAL_Delay(20);
-	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_2, 0); //update pwm value //TIM4->CCR2 = pwm;
+	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_3, 0); //update pwm value
 
 
 }
@@ -171,9 +174,30 @@ void printStatus(struct statusValues statusValues_1, UART_HandleTypeDef *huart){
 	  	memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
-		//Temperature[deg C]
+		//Temperature - Heatsink[deg C]
 	  	//gcvt((statusValues_1.temperature/10.0), 6, buffer);
   		sprintf(buffer, "%5.2f", statusValues_1.temperature/10.0);
+	  	debugPrint(huart, buffer);
+	  	memset(&buffer, '\0', sizeof(buffer));
+		debugPrint(huart, "   ");
+
+		//Temperature - MosFET1[deg C]
+	  	//gcvt((statusValues_1.temperature/10.0), 6, buffer);
+  		sprintf(buffer, "%5.2f", statusValues_1.MOSFET1_Temp/10.0);
+	  	debugPrint(huart, buffer);
+	  	memset(&buffer, '\0', sizeof(buffer));
+		debugPrint(huart, "   ");
+
+		//Temperature - MosFET2[deg C]
+	  	//gcvt((statusValues_1.temperature/10.0), 6, buffer);
+  		sprintf(buffer, "%5.2f", statusValues_1.MOSFET2_Temp/10.0);
+	  	debugPrint(huart, buffer);
+	  	memset(&buffer, '\0', sizeof(buffer));
+		debugPrint(huart, "   ");
+
+		//Temperature - PCB[deg C]
+	  	//gcvt((statusValues_1.temperature/10.0), 6, buffer);
+  		sprintf(buffer, "%5.2f", statusValues_1.PCB_Temp/10.0);
 	  	debugPrint(huart, buffer);
 	  	memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
