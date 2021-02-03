@@ -20,7 +20,7 @@ extern bool reportStatus;
 extern bool txDone;
 extern uint32_t zeroTimeValue;
 uint16_t mcp4725Voltage = 0;
-float outputVoltageCompensationConstant = 0.15328721307;
+float outputVoltageCompensationConstant = 0.15705657076;
 float temperatureC;
 
 // resistance at 25 degrees C
@@ -61,7 +61,7 @@ void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
 
 uint16_t adc2Temperature(uint16_t adcValue, uint16_t adcResolution){
 
-	temperatureC = adcResolution / adcValue - 1;
+	temperatureC = (float)adcResolution / adcValue - 1;
 	temperatureC = SERIESRESISTOR / temperatureC;
 
   temperatureC = temperatureC / THERMISTORNOMINAL;     // (R/Ro)
@@ -84,18 +84,19 @@ void debugPrint(UART_HandleTypeDef *huart, char _out[]){
 void printHELP(UART_HandleTypeDef *huart, struct statusValues statusValues_1){
 	  debugPrintln(huart, "|------------------------------------------|");
 	  debugPrintln(huart, "|      Axel Johansson's Electronic load    |");
-	  debugPrintln(huart, "|      Version 2.1 2020                    |");
+	  debugPrintln(huart, "|      Version 2.2 2020                    |");
 	  debugPrintln(huart, "|---------- Availible Commands ------------|");
-	  debugPrintln(huart, "  cc <mA> - Constant current");
-	  debugPrintln(huart, "  cp <mW> - Constant power(To be implemented..)");
-	  debugPrintln(huart, "cr <mOhm> - Constant resistance(To be implemented..)");
-	  debugPrintln(huart, " fs <%/A> - Fanspeed, (0-100% OR \"A\" for Automatic) - Default: A");
-	  debugPrintln(huart, "  mv <mV> - Set MIN voltage - Default: 0 mV");
-	  debugPrintln(huart, " log <ms> - Interval of printing status");
-	  debugPrintln(huart, "     stop - Turn current off");
-	  debugPrintln(huart, "    reset - Reset charge/energy counters");
-	  debugPrintln(huart, "   status - Print status");
-	  debugPrintln(huart, "     help - Show this help");
+	  debugPrintln(huart, "      cc <mA> - Constant current");
+	  debugPrintln(huart, "      cp <mW> - Constant power(To be implemented..)");
+	  debugPrintln(huart, "    cr <mOhm> - Constant resistance(To be implemented..)");
+	  debugPrintln(huart, " pm <ms> <mA> - PulseMode, Set PULSE length and amplitude");
+	  debugPrintln(huart, "     fs <%/A> - Fanspeed, (0-100% OR \"A\" for Automatic) - Default: A");
+	  debugPrintln(huart, "      mv <mV> - Set MIN voltage - Default: 0 mV");
+	  debugPrintln(huart, "     log <ms> - Interval of printing status");
+	  debugPrintln(huart, "         stop - Turn current off");
+	  debugPrintln(huart, "        reset - Reset charge/energy counters");
+	  debugPrintln(huart, "       status - Print status");
+	  debugPrintln(huart, "         help - Show this help");
 	  debugPrintln(huart, " ");
 	  debugPrintln(huart, "Status is printed out as:");
 	  debugPrintln(huart, "Timestamp[ms]; Temperature - Heatsink[deg C]; Temperature - MosFET1[deg C]; Temperature - MosFET2[deg C]; Temperature - PCB[deg C]; Set current[mA]; Measured current[mA]; Measured Voltage[mV]; Measured Power[mW]; Amperehours[mAh]; Watthours[mWh]");
@@ -163,6 +164,7 @@ void autoFanSpeed(TIM_HandleTypeDef *htim, uint16_t temp){
 
 
 void printStatus(struct statusValues statusValues_1, UART_HandleTypeDef *huart){
+	debugPrint(huart, ">>");
 	char buffer[15];
   		memset(&buffer, '\0', sizeof(buffer));
 

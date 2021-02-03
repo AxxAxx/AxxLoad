@@ -35,7 +35,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 volatile int line_valid = 0;
-#define LINEMAX 10 // Maximal allowed/expected line length
+#define LINEMAX 16 // Maximal allowed/expected line length
 static char line_buffer[LINEMAX]; // Holding buffer with space for terminating NUL
 static char rx_buffer[LINEMAX]; // Local holding buffer to build line
 void substring(char [], char[], int, int);
@@ -73,17 +73,23 @@ uint16_t command_value = 0;
 bool reportStatus = false;
 bool CW_MODE = false;
 bool CR_MODE = false;
+bool PULSE_MODE = false;
+
+bool PULSE_TOGGLE = false;
+
 txDone = true;
 autoFanSpeedMode = true;
 uint32_t previousMillis = 0;
 uint32_t previousMillis_INTEGRATION = 0;
+uint32_t previousMillis_PULSE = 0;
+
 uint32_t zeroTimeValue = 0;
 uint32_t statusInterval = 500;           // interval at which to blink (milliseconds)
 uint32_t integrationTime = 0;
 uint32_t milliAmpHours = 0;
 uint32_t milliWattHours = 0;
 uint16_t setCurrent = 0;           // interval at which to blink (milliseconds)
-float voltageCompensationConstant = 3.5501359246;
+float voltageCompensationConstant = 3.57081997924;
 float currentCompensationConstant = 1.01125769786;
 float temperatureCompensationConstant = 1; //VOLT: 1.98 (16 deg) - 0.065 (152 deg)
 unsigned char ADSwrite[6];
@@ -94,6 +100,9 @@ uint16_t maxWatt = 500;
 uint16_t maxCurrent = 20;
 
 uint16_t minVolt = 0;
+
+uint16_t pulseLength = 0;
+uint16_t pulseCurrent = 0;
 
 int16_t ADS11115_VOLT = 0;
 int16_t ADS11115_CURRENT = 0;
@@ -286,15 +295,15 @@ int main(void)
 	    // Get ADC value
 	    HAL_ADC_Start(&hadc1);
 	    HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-	    my_statusValues.MOSFET1_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc1),4096);
+	    my_statusValues.MOSFET1_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc1),3500);
 
 	    HAL_ADC_Start(&hadc2);
 	    HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
-	    my_statusValues.MOSFET2_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc2),4096);
+	    my_statusValues.MOSFET2_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc2),3500);
 
 	    HAL_ADC_Start(&hadc2);
 	    HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
-	    my_statusValues.PCB_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc2),4096);
+	    my_statusValues.PCB_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc2),3500);
 
 
 
@@ -326,7 +335,7 @@ if (line_valid==1){ // A new line has arrived
 
 	while (p != NULL){
 		array[i++] = p;
-		p = strtok (NULL, "/");}
+		p = strtok (NULL, " ");}
 
 	if((strncmp(array[0], "??" ,10) == 0) ||  (strncmp(array[0], "help" ,10) == 0) || (strncmp(array[0], "h" ,10) == 0)){
 		printHELP(&huart2,my_statusValues);}
@@ -350,6 +359,27 @@ if (line_valid==1){ // A new line has arrived
 	  	debugPrintln(&huart2, "mV");
 
 		}
+
+	else if(strncmp(array[0], "pm" ,10) == 0){
+		command_value = stringToInt(array[1]);
+		pulseLength = command_value;
+		command_value = stringToInt(array[2]);
+		pulseCurrent = command_value;
+
+	  	debugPrint(&huart2, "Setting Pulse Length to: ");
+	  	debugPrint(&huart2, array[1]);
+	  	debugPrintln(&huart2, " ms");
+
+
+	  	debugPrint(&huart2, "Setting Pulse Current to: ");
+	  	debugPrint(&huart2, array[2]);
+	  	debugPrintln(&huart2, " mA");
+
+		PULSE_MODE = true;
+		reportStatus = true;
+
+		}
+
 
 	else if(strncmp(array[0], "cc" ,10) == 0){
 		if (stringToInt(array[1]) <= 20000){
@@ -382,6 +412,9 @@ if (line_valid==1){ // A new line has arrived
 		reportStatus = false;
 		my_statusValues.setCurrent = 0;
 		CW_MODE = false;
+		PULSE_MODE = false;
+		debugPrintln(&huart2, "Received STOP, STOPPING.....");
+
 	}
 
 	else if(strncmp(array[0], "reset" ,10) == 0){
@@ -403,14 +436,32 @@ if (line_valid==1){ // A new line has arrived
 
 
 	  HAL_GPIO_TogglePin(GPIOB, LED_Pin); //Toggle LED
-	  HAL_GPIO_TogglePin(GPIOA, BILED_1_Pin); //Toggle LED
-	  HAL_GPIO_TogglePin(GPIOB, BILED_2_Pin); //Toggle LED
+
 	  HAL_GPIO_TogglePin(GPIOA,  DISCHARGE_LED_Pin); //Toggle LED
 	  HAL_GPIO_TogglePin(GPIOB,  OVERTEMP_Pin);
 
 
 
+	  if(PULSE_MODE){
 
+		  if(HAL_GetTick() - previousMillis_PULSE >= pulseLength){
+
+
+			  if (PULSE_TOGGLE){
+				  PULSE_TOGGLE = false;
+				  my_statusValues.setCurrent = pulseCurrent;
+				  HAL_GPIO_TogglePin(GPIOA, BILED_1_Pin); //Toggle LED
+
+			  }
+			  else{
+				  PULSE_TOGGLE = true;
+				  HAL_GPIO_TogglePin(GPIOA, BILED_1_Pin); //Toggle LED
+				  my_statusValues.setCurrent = 0;
+			  }
+
+			  previousMillis_PULSE = HAL_GetTick();
+		  }
+	  }
 
 
 	  if(reportStatus){
@@ -827,7 +878,7 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 32-1;
+  htim3.Init.Prescaler = 500;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 100;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
