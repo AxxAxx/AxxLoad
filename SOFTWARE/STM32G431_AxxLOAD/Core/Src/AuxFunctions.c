@@ -148,18 +148,19 @@ void setFanSpeed(UART_HandleTypeDef *huart, TIM_HandleTypeDef *htim, uint16_t fa
 
 void autoFanSpeed(TIM_HandleTypeDef *htim, uint16_t temp){
 	temp = temp/10.0;
-	if (temp>80){
-		__HAL_TIM_SetCompare(htim, TIM_CHANNEL_1, 100); //update pwm value //TIM2->CCR2 = pwm;
+
+	int set_speed = 1.4*temp-12;
+
+	if (set_speed <= 0){
+		set_speed = 0;
 	}
-	else if (temp>50){
-		__HAL_TIM_SetCompare(htim, TIM_CHANNEL_1, 65); //update pwm value //TIM2->CCR2 = pwm;
+
+	if (set_speed >= 100){
+		set_speed = 100;
 	}
-	else if (temp>30){
-		__HAL_TIM_SetCompare(htim, TIM_CHANNEL_1, 30); //update pwm value //TIM2->CCR2 = pwm;
-	}
-	else{
-		__HAL_TIM_SetCompare(htim, TIM_CHANNEL_1, 0); //update pwm value //TIM2->CCR2 = pwm;
-	}
+
+	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_1, set_speed);
+
 }
 
 
