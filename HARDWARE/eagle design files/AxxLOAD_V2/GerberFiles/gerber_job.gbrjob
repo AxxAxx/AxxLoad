@@ -1,0 +1,24 @@
+{
+    "Header": {
+        "Comment": "All values are metric (mm)",
+        "CreationDate": "2020-12-11T12:09:04Z",
+        "GenerationSoftware": {
+            "Application": "EAGLE",
+            "Vendor": "Autodesk",
+            "Version": "9.5.2"
+        },
+        "Part": "Single"
+    },
+    "Overall": {
+        "BoardThickness": 1.586,
+        "LayerNumber": 2,
+        "Name": {
+            "ProjectId": "electronicload"
+        },
+        "Owner": "Axel Johansson <axel.johansson10@gmail.com>",
+        "Size": {
+            "X": 120.02,
+            "Y": 72
+        }
+    }
+}

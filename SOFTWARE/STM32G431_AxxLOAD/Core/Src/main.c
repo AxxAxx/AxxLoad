@@ -124,6 +124,7 @@ struct statusValues {
 	uint32_t   measuredPower;
 	float   amperehours;
 	float   watthours;
+	uint16_t fanSpeed;
 };
 
 
@@ -344,8 +345,10 @@ if (line_valid==1){ // A new line has arrived
 		if ((strncmp(array[1], "A" ,10) == 0) || (strncmp(array[1], "a" ,10) == 0)){
 			autoFanSpeedMode=true;
 			debugPrintln(&huart2, "Setting fan speed to Auto");}
-		else{command_value = stringToInt(array[1]);
-			setFanSpeed(&huart2, &htim1, command_value);
+		else
+			{
+			my_statusValues.fanSpeed = stringToInt(array[1]);
+			setFanSpeed(&huart2, &htim1, my_statusValues);
 			autoFanSpeedMode=false;
 		}
 	}
@@ -437,8 +440,8 @@ if (line_valid==1){ // A new line has arrived
 
 	  HAL_GPIO_TogglePin(GPIOB, LED_Pin); //Toggle LED
 
-	  HAL_GPIO_TogglePin(GPIOA,  DISCHARGE_LED_Pin); //Toggle LED
-	  HAL_GPIO_TogglePin(GPIOB,  OVERTEMP_Pin);
+	  //HAL_GPIO_TogglePin(GPIOA,  DISCHARGE_LED_Pin); //Toggle LED
+	  //HAL_GPIO_TogglePin(GPIOB,  OVERTEMP_Pin);
 
 
 
@@ -455,8 +458,9 @@ if (line_valid==1){ // A new line has arrived
 			  }
 			  else{
 				  PULSE_TOGGLE = true;
-				  HAL_GPIO_TogglePin(GPIOA, BILED_1_Pin); //Toggle LED
 				  my_statusValues.setCurrent = 0;
+				  HAL_GPIO_TogglePin(GPIOA, BILED_2_Pin); //Toggle LED
+
 			  }
 
 			  previousMillis_PULSE = HAL_GetTick();
@@ -472,9 +476,22 @@ if (line_valid==1){ // A new line has arrived
 	  }
 
 	  if (autoFanSpeedMode){
-		  autoFanSpeed(&htim1, my_statusValues.temperature);
-	  }
 
+
+		  my_statusValues.fanSpeed = 1.7*(my_statusValues.temperature/10.0)-36;
+
+
+
+			if (my_statusValues.fanSpeed <= 0){
+				my_statusValues.fanSpeed = 0;
+			}
+
+			if (my_statusValues.fanSpeed >= 100){
+				my_statusValues.fanSpeed = 100;
+			}
+			autoFanSpeed(my_statusValues, &htim1);
+
+	  }
 	  if(my_statusValues.measuredVoltage<minVolt){
 			my_statusValues.setCurrent = 0;
 			reportStatus = false;
@@ -754,7 +771,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 16-1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 100;
+  htim1.Init.Period = 1000;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;

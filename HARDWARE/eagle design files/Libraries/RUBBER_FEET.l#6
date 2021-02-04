@@ -85,6 +85,17 @@
 </symbol>
 </symbols>
 <devicesets>
+<deviceset name="RUBBER_FEET">
+<gates>
+</gates>
+<devices>
+<device name="" package="RUBBER_FEET">
+<technologies>
+<technology name=""/>
+</technologies>
+</device>
+</devices>
+</deviceset>
 </devicesets>
 </library>
 </drawing>

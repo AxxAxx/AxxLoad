@@ -81,12 +81,13 @@
 <symbols>
 <symbol name="RUBBER_FEET">
 <circle x="0" y="0" radius="2.54" width="0.1524" layer="94"/>
-<text x="-4.572" y="3.048" size="1" layer="94">RUBBER_FEET</text>
+<text x="-4.572" y="3.048" size="1.27" layer="97">RUBBER_FEET</text>
 </symbol>
 </symbols>
 <devicesets>
 <deviceset name="RUBBER_FEET">
 <gates>
+<gate name="G$1" symbol="RUBBER_FEET" x="0" y="0"/>
 </gates>
 <devices>
 <device name="" package="RUBBER_FEET">

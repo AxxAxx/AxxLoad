@@ -46,6 +46,7 @@ struct statusValues {
 	uint32_t   measuredPower;
 	float   amperehours;
 	float   watthours;
+	uint16_t fanSpeed;
 };
 
 void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
@@ -99,7 +100,7 @@ void printHELP(UART_HandleTypeDef *huart, struct statusValues statusValues_1){
 	  debugPrintln(huart, "         help - Show this help");
 	  debugPrintln(huart, " ");
 	  debugPrintln(huart, "Status is printed out as:");
-	  debugPrintln(huart, "Timestamp[ms]; Temperature - Heatsink[deg C]; Temperature - MosFET1[deg C]; Temperature - MosFET2[deg C]; Temperature - PCB[deg C]; Set current[mA]; Measured current[mA]; Measured Voltage[mV]; Measured Power[mW]; Amperehours[mAh]; Watthours[mWh]");
+	  debugPrintln(huart, "Timestamp[ms]; Temperature - Heatsink[deg C]; Temperature - MosFET1[deg C]; Temperature - MosFET2[deg C]; Temperature - PCB[deg C]; Set current[mA]; Measured current[mA]; Measured Voltage[mV]; Measured Power[mW]; Amperehours[mAh]; Watthours[mWh]; Fanspeed [%]");
 	  printStatus(statusValues_1, huart);
 	  debugPrintln(huart, "|------------------------------------------|");
 	  debugPrintln(huart, " ");
@@ -138,28 +139,17 @@ uint16_t stringToInt(char *string){
 }
 
 
-void setFanSpeed(UART_HandleTypeDef *huart, TIM_HandleTypeDef *htim, uint16_t fanspeed){
+void setFanSpeed(UART_HandleTypeDef *huart, TIM_HandleTypeDef *htim, struct statusValues statusValues_1){
 	debugPrint(huart, "Setting Fan speed to: ");
-	sprintf(buffer, "%hu", fanspeed);
+	sprintf(buffer, "%hu", statusValues_1.fanSpeed);
 	debugPrint(huart, buffer);
 	debugPrintln(huart, "%");
-	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_1, fanspeed); //update pwm value //TIM2->CCR2 = pwm;
+	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_1, statusValues_1.fanSpeed*10); //update pwm value //TIM2->CCR2 = pwm;
 }
 
-void autoFanSpeed(TIM_HandleTypeDef *htim, uint16_t temp){
-	temp = temp/10.0;
+void autoFanSpeed(struct statusValues statusValues_1, TIM_HandleTypeDef *htim){
 
-	int set_speed = 1.4*temp-12;
-
-	if (set_speed <= 0){
-		set_speed = 0;
-	}
-
-	if (set_speed >= 100){
-		set_speed = 100;
-	}
-
-	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_1, set_speed);
+	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_1, statusValues_1.fanSpeed*10);
 
 }
 
@@ -252,6 +242,15 @@ void printStatus(struct statusValues statusValues_1, UART_HandleTypeDef *huart){
   		sprintf(buffer, "%5.2f", statusValues_1.watthours);
   		debugPrint(huart, buffer);
 		memset(&buffer, '\0', sizeof(buffer));
+		debugPrint(huart, "   ");
+
+
+  		sprintf(buffer, "%5.0f", statusValues_1.fanSpeed*1.0);
+  		debugPrint(huart, buffer);
+		memset(&buffer, '\0', sizeof(buffer));
 		debugPrintln(huart, "   ");
+
+
+
 
 }

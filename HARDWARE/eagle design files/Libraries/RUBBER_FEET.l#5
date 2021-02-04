@@ -87,9 +87,10 @@
 <devicesets>
 <deviceset name="RUBBER_FEET">
 <gates>
+<gate name="G$1" symbol="RUBBER_FEET" x="0" y="0"/>
 </gates>
 <devices>
-<device name="">
+<device name="" package="RUBBER_FEET">
 <technologies>
 <technology name=""/>
 </technologies>
