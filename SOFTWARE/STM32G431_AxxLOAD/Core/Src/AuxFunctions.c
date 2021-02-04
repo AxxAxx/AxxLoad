@@ -2,9 +2,9 @@
  * AuxFunctions.c
  *
  *  Created on: 13 aug. 2020
- *      Author: SEAXJOH
+ *  Edited on: 2 feb. 2021
+ *      Author: Axel Johansson [axel.johansson10@gmail.com]
  */
-
 
 #include "AuxFunctions.h"
 #include "stm32g4xx_hal.h"
@@ -32,7 +32,6 @@ float temperatureC;
 // the value of the 'other' resistor
 #define SERIESRESISTOR 10000  
 
-
 struct statusValues {
 	uint32_t  timestamp;
 	uint16_t  HEATSINK_Temp;
@@ -59,23 +58,21 @@ void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
     txDone = false;
 	HAL_UART_Transmit_IT(huart, (uint8_t *) newline, 2);
 	while(!txDone);
-
 }
 
 uint16_t adc2Temperature(uint16_t adcValue, uint16_t adcResolution){
-
 	temperatureC = (float)adcResolution / adcValue - 1;
 	temperatureC = SERIESRESISTOR / temperatureC;
 
-  temperatureC = temperatureC / THERMISTORNOMINAL;     // (R/Ro)
-  temperatureC = log(temperatureC);                  // ln(R/Ro)
-  temperatureC /= BCOEFFICIENT;                   // 1/B * ln(R/Ro)
-  temperatureC += 1.0 / (TEMPERATURENOMINAL + 273.15); // + (1/To)
-  temperatureC = 1.0 / temperatureC;                 // Invert
-  temperatureC -= 273.15;                         // convert to C
-  temperatureC *= 10;
-  return temperatureC;
-	}
+	temperatureC = temperatureC / THERMISTORNOMINAL;     // (R/Ro)
+	temperatureC = log(temperatureC);                  // ln(R/Ro)
+	temperatureC /= BCOEFFICIENT;                   // 1/B * ln(R/Ro)
+	temperatureC += 1.0 / (TEMPERATURENOMINAL + 273.15); // + (1/To)
+	temperatureC = 1.0 / temperatureC;                 // Invert
+	temperatureC -= 273.15;                         // convert to C
+	temperatureC *= 10;
+	return temperatureC;
+}
 
 
 void debugPrint(UART_HandleTypeDef *huart, char _out[]){
@@ -83,6 +80,7 @@ void debugPrint(UART_HandleTypeDef *huart, char _out[]){
 	HAL_UART_Transmit_IT(huart, (uint8_t *) _out, strlen(_out));
 	while(!txDone);
 }
+
 
 void printHELP(UART_HandleTypeDef *huart, struct statusValues statusValues_1){
 	  debugPrintln(huart, "|------------------------------------------|");
@@ -116,22 +114,20 @@ void printHELP(UART_HandleTypeDef *huart, struct statusValues statusValues_1){
 	  debugPrintln(huart, "Discharged Watthours [mWh]");
 	  debugPrintln(huart, "Fan Speed [%]");
 
-
 	  printStatus(statusValues_1, huart);
 	  debugPrintln(huart, "|------------------------------------------|");
-	  debugPrintln(huart, " ");
 }
+
 
 void BEEP(TIM_HandleTypeDef *htim){
 
 	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_3, 5); //update pwm value
 	HAL_Delay(20);
 	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_3, 0); //update pwm value
-
-
 }
-void MCP4725_write(I2C_HandleTypeDef *hi2c, uint16_t outputVoltage){
 
+
+void MCP4725_write(I2C_HandleTypeDef *hi2c, uint16_t outputVoltage){
 	mcp4725Voltage = outputVoltage*outputVoltageCompensationConstant;
 	ADSwrite[0] = 0b01000000;
 	ADSwrite[1] = mcp4725Voltage >> 4;
@@ -139,7 +135,6 @@ void MCP4725_write(I2C_HandleTypeDef *hi2c, uint16_t outputVoltage){
 
 	HAL_I2C_Master_Transmit(hi2c, MCP4725_ADDRESS << 1, ADSwrite, 3, 100);
     HAL_Delay(10);
-
 }
 
 
@@ -163,8 +158,8 @@ void setFanSpeed(UART_HandleTypeDef *huart, TIM_HandleTypeDef *htim, struct stat
 	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_1, statusValues_1.fanSpeed*10); //update pwm value //TIM2->CCR2 = pwm;
 }
 
-void autoFanSpeed(struct statusValues statusValues_1, TIM_HandleTypeDef *htim){
 
+void autoFanSpeed(struct statusValues statusValues_1, TIM_HandleTypeDef *htim){
 	__HAL_TIM_SetCompare(htim, TIM_CHANNEL_1, statusValues_1.fanSpeed*10);
 
 }
@@ -176,114 +171,79 @@ void printStatus(struct statusValues statusValues_1, UART_HandleTypeDef *huart){
   		memset(&buffer, '\0', sizeof(buffer));
 
 		//Timestamp[ms]
-	  	//sprintf(buffer, "%hu", statusValues_1.timestamp);
   		sprintf(buffer, "%8.2f", statusValues_1.timestamp/1000.0);
-	  	//gcvt((statusValues_1.timestamp/1000.0), 6, buffer);
 		debugPrint(huart, buffer);
 	  	memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
 		//Temperature - Heatsink[deg C]
-	  	//gcvt((statusValues_1.temperature/10.0), 6, buffer);
   		sprintf(buffer, "%5.2f", statusValues_1.HEATSINK_Temp/10.0);
 	  	debugPrint(huart, buffer);
 	  	memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
 		//Temperature - MosFET1[deg C]
-	  	//gcvt((statusValues_1.temperature/10.0), 6, buffer);
   		sprintf(buffer, "%5.2f", statusValues_1.MOSFET1_Temp/10.0);
 	  	debugPrint(huart, buffer);
 	  	memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
 		//Temperature - MosFET2[deg C]
-	  	//gcvt((statusValues_1.temperature/10.0), 6, buffer);
   		sprintf(buffer, "%5.2f", statusValues_1.MOSFET2_Temp/10.0);
 	  	debugPrint(huart, buffer);
 	  	memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
 		//Temperature - PCB[deg C]
-	  	//gcvt((statusValues_1.temperature/10.0), 6, buffer);
   		sprintf(buffer, "%5.2f", statusValues_1.PCB_Temp/10.0);
 	  	debugPrint(huart, buffer);
 	  	memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
 		//Set current[mA]
-	  	//sprintf(buffer, "%hu", statusValues_1.setCurrent);
-	  	//gcvt((statusValues_1.setCurrent/1000.0), 6, buffer);
   		sprintf(buffer, "%7.2f", statusValues_1.setCurrent/1000.0);
 	  	debugPrint(huart, buffer);
 	  	memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
 		//Measured current[mA]
-	  	//sprintf(buffer, "%hu", statusValues_1.measuredCurrent);
-	  	//gcvt((statusValues_1.measuredCurrent/1000.0), 6, buffer);
   		sprintf(buffer, "%7.2f", statusValues_1.measuredCurrent/1000.0);
   		debugPrint(huart, buffer);
 	  	memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
-
 		//Measured Voltage[mV]
-	  	//sprintf(buffer, "%hu", statusValues_1.measuredVoltage);
-	  	//gcvt((statusValues_1.measuredVoltage/1000.0), 6, buffer);
   		sprintf(buffer, "%4.2f", statusValues_1.measuredVoltage/1000.0);
 	  	debugPrint(huart, buffer);
 	  	memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
 		//Measured Power[mW]
-		//sprintf(buffer, "%hu", statusValues_1.measuredPower);
-	  	//gcvt((statusValues_1.measuredPower/1.0), 6, buffer);
   		sprintf(buffer, "%5.2f", statusValues_1.measuredPower/1000.0);
   		debugPrint(huart, buffer);
 		memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
-
-
-
 		//Measured Equivalent Resistance[mOHM]
-		//sprintf(buffer, "%hu", statusValues_1.measuredPower);
-	  	//gcvt((statusValues_1.measuredPower/1.0), 6, buffer);
   		sprintf(buffer, "%5.2f", statusValues_1.measuredEquivalentResistance/1000.0);
   		debugPrint(huart, buffer);
 		memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
-
-
-
-
-
-
 		//Amperehours[mAh]
-		//sprintf(buffer, "%hu", statusValues_1.amperehours);
-	  	//gcvt((statusValues_1.amperehours/1000000000.0), 6, buffer);
   		sprintf(buffer, "%5.2f", statusValues_1.amperehours);
   		debugPrint(huart, buffer);
 		memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
 		//Watthours[mWh]
-		//sprintf(buffer, "%hu", statusValues_1.watthours);
-	  	//gcvt((statusValues_1.watthours/1000000000.0), 6, buffer);
   		sprintf(buffer, "%5.2f", statusValues_1.watthours);
   		debugPrint(huart, buffer);
 		memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
 
-
   		sprintf(buffer, "%5.0f", statusValues_1.fanSpeed*1.0);
   		debugPrint(huart, buffer);
 		memset(&buffer, '\0', sizeof(buffer));
 		debugPrintln(huart, "   ");
-
-
-
-
 }

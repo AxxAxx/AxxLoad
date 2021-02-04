@@ -65,7 +65,6 @@ DMA_HandleTypeDef hdma_usart2_rx;
 #define ADS1115_ADDRESS 0x48
 int16_t reading;
 
-
 char byte, rx;
 char chardata[15];
 uint8_t dimmer=0;
@@ -108,9 +107,6 @@ int16_t ADS11115_VOLT = 0;
 int16_t ADS11115_CURRENT = 0;
 int16_t ADS11115_TEMPERATURE = 0;
 
-
-
-
 struct statusValues {
 	uint32_t   timestamp;
 	uint16_t   HEATSINK_Temp;
@@ -152,19 +148,13 @@ USART2_IRQHandler();
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
-
-{
-
- /* Set transmission flag: transfer complete */
-
-txDone = true;
-
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle){
+	/* Set transmission flag: transfer complete */
+	txDone = true;
 }
 
 // This callback is called by the HAL_UART_IRQHandler when the given number of bytes are received
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 	HAL_UART_Receive_IT(&huart2, &byte, 1);//Restart the interrupt reception mode
 	static int rx_index = 0;
 	//if (USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) // Received character?
@@ -238,13 +228,13 @@ int main(void)
   MX_TIM3_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-	HAL_TIM_Base_Start(&htim1);
-	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1); //Start Pwm signal on PB-6 Pin
+  HAL_TIM_Base_Start(&htim1);
+  HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1); //Start Pwm signal on PB-6 Pin
 
-	HAL_TIM_Base_Start(&htim3);
-	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_3); //Start Pwm signal on PB-6 Pin
+  HAL_TIM_Base_Start(&htim3);
+  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_3); //Start Pwm signal on PB-6 Pin
 
-	HAL_UART_Receive_IT(&huart2, &byte, 1);//Start the interrupt reception mode
+  HAL_UART_Receive_IT(&huart2, &byte, 1);//Start the interrupt reception mode
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -255,13 +245,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-
-
 	    for(int i=0; i< 3; i++){
-
 	    	ADSwrite[0] = 0x01;
-
 	    				switch(i){
 	    					case(0):
 	    						ADSwrite[1] = 0xC1; //11000001
@@ -272,10 +257,6 @@ int main(void)
 	    					case(2):
 								ADSwrite[1] = 0xF1;//ADSwrite[1] = 0xE1;
 	    					break;
-	    					/*
-	    					case(3):
-	    						ADSwrite[1] = 0xF1;
-	    					break;*/
 	    				}
 
 	    				ADSwrite[2] = 0x83; //10000011 LSB
@@ -294,21 +275,18 @@ int main(void)
 	    				voltage[i] = reading;
 	    		}
 
-
 	    // Get ADC value
-	    HAL_ADC_Start(&hadc1);
-	    HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-	    my_statusValues.MOSFET1_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc1),3500);
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+	my_statusValues.MOSFET1_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc1),3500);
 
-	    HAL_ADC_Start(&hadc2);
-	    HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
-	    my_statusValues.MOSFET2_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc2),3500);
+	HAL_ADC_Start(&hadc2);
+	HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
+	my_statusValues.MOSFET2_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc2),3500);
 
-	    HAL_ADC_Start(&hadc2);
-	    HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
-	    my_statusValues.PCB_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc2),3500);
-
-
+	HAL_ADC_Start(&hadc2);
+	HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
+	my_statusValues.PCB_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc2),3500);
 
 	my_statusValues.measuredVoltage = voltage[0] * voltageCompensationConstant;
 	my_statusValues.measuredCurrent = voltage[1] * currentCompensationConstant;
@@ -324,197 +302,160 @@ int main(void)
 	previousMillis_INTEGRATION = HAL_GetTick();
 
 
-
 	//Set current by setting voltage drop over shunt
 	MCP4725_write(&hi2c1, my_statusValues.setCurrent);
 
-if (line_valid==1){ // A new line has arrived
-	BEEP(&htim3);
-	line_valid = 0; // clear pending flag
-	debugPrint(&huart2, "Sent command: ");
-	debugPrintln(&huart2, line_buffer);
-	int i = 0;
-	char *p = strtok (line_buffer, " ");
-	char *array[4];
+	if (line_valid==1){ // A new line has arrived
+		BEEP(&htim3);
+		line_valid = 0; // clear pending flag
+		debugPrint(&huart2, "Sent command: ");
+		debugPrintln(&huart2, line_buffer);
+		int i = 0;
+		char *p = strtok (line_buffer, " ");
+		char *array[4];
 
-	while (p != NULL){
-		array[i++] = p;
-		p = strtok (NULL, " ");}
+		while (p != NULL){
+			array[i++] = p;
+			p = strtok (NULL, " ");}
 
-	if((strncmp(array[0], "??" ,10) == 0) ||  (strncmp(array[0], "help" ,10) == 0) || (strncmp(array[0], "h" ,10) == 0)){
-		printHELP(&huart2,my_statusValues);}
+		if((strncmp(array[0], "??" ,10) == 0) ||  (strncmp(array[0], "help" ,10) == 0) || (strncmp(array[0], "h" ,10) == 0)){
+			printHELP(&huart2,my_statusValues);}
 
-	else if(strncmp(array[0], "fs" ,10) == 0){
-		if ((strncmp(array[1], "A" ,10) == 0) || (strncmp(array[1], "a" ,10) == 0)){
-			autoFanSpeedMode=true;
-			debugPrintln(&huart2, "Setting fan speed to Auto");}
-		else
-			{
-			my_statusValues.fanSpeed = stringToInt(array[1]);
-			setFanSpeed(&huart2, &htim1, my_statusValues);
-			autoFanSpeedMode=false;
-		}
-	}
-
-	else if(strncmp(array[0], "mv" ,10) == 0){
-		command_value = stringToInt(array[1]);
-		minVolt = command_value;
-	  	debugPrint(&huart2, "Setting min voltage to: ");
-	  	debugPrint(&huart2, array[1]);
-
-	  	debugPrintln(&huart2, "mV");
-
+		else if(strncmp(array[0], "fs" ,10) == 0){
+			if ((strncmp(array[1], "A" ,10) == 0) || (strncmp(array[1], "a" ,10) == 0)){
+				autoFanSpeedMode=true;
+				debugPrintln(&huart2, "Setting fan speed to Auto");}
+			else{
+				my_statusValues.fanSpeed = stringToInt(array[1]);
+				setFanSpeed(&huart2, &htim1, my_statusValues);
+				autoFanSpeedMode=false;
+			}
 		}
 
-	else if(strncmp(array[0], "pm" ,10) == 0){
-		command_value = stringToInt(array[1]);
-		pulseLength = command_value;
-		command_value = stringToInt(array[2]);
-		pulseCurrent = command_value;
+		else if(strncmp(array[0], "mv" ,10) == 0){
+			command_value = stringToInt(array[1]);
+			minVolt = command_value;
+			debugPrint(&huart2, "Setting min voltage to: ");
+			debugPrint(&huart2, array[1]);
+			debugPrintln(&huart2, "mV");
+			}
 
-	  	debugPrint(&huart2, "Setting Pulse Length to: ");
-	  	debugPrint(&huart2, array[1]);
-	  	debugPrintln(&huart2, " ms");
+		else if(strncmp(array[0], "pm" ,10) == 0){
+			command_value = stringToInt(array[1]);
+			pulseLength = command_value;
+			command_value = stringToInt(array[2]);
+			pulseCurrent = command_value;
 
-
-	  	debugPrint(&huart2, "Setting Pulse Current to: ");
-	  	debugPrint(&huart2, array[2]);
-	  	debugPrintln(&huart2, " mA");
-
-		PULSE_MODE = true;
-		reportStatus = true;
-
-		}
+			debugPrint(&huart2, "Setting Pulse Length to: ");
+			debugPrint(&huart2, array[1]);
+			debugPrintln(&huart2, " ms");
 
 
-	else if(strncmp(array[0], "cc" ,10) == 0){
-		if (stringToInt(array[1]) <= 20000){
-			my_statusValues.setCurrent = stringToInt(array[1]);
+			debugPrint(&huart2, "Setting Pulse Current to: ");
+			debugPrint(&huart2, array[2]);
+			debugPrintln(&huart2, " mA");
+
+			PULSE_MODE = true;
 			reportStatus = true;
+			}
+
+		else if(strncmp(array[0], "cc" ,10) == 0){
+			if (stringToInt(array[1]) <= 20000){
+				my_statusValues.setCurrent = stringToInt(array[1]);
+				reportStatus = true;
+				CW_MODE = false;
+				CR_MODE = false;
+				PULSE_MODE = false;
+			}
+
+			else{
+				debugPrintln(&huart2, "Requested current is too high... Max current is 20 A");}
+			}
+
+		else if(strncmp(array[0], "cp" ,10) == 0){
+			my_statusValues.setPower = stringToInt(array[1]);
+			if (my_statusValues.setPower <= 250){
+				reportStatus = true;
+				CW_MODE = true;
+				CR_MODE = false;
+				PULSE_MODE = false;
+			}
+			else{
+				debugPrintln(&huart2, "Requested power is too high... Max power is 250 W");}
+			}
+
+		else if(strncmp(array[0], "cr" ,10) == 0){
+			if (stringToInt(array[1]) > 0){
+				my_statusValues.setResistance = stringToInt(array[1]);
+			}
+			else {
+				debugPrintln(&huart2, "Hey, can't divide with Zero!");
+			}
+
+			reportStatus = true;
+			CR_MODE = true;
+			CW_MODE = false;
+			PULSE_MODE = false;
+		}
+
+		else if(strncmp(array[0], "status" ,10) == 0){
+			printStatus(my_statusValues, &huart2);
+		}
+
+		else if((strncmp(array[0], "stop" ,10) == 0) || strncmp(array[0], "s" ,10) == 0){
+			reportStatus = false;
+			my_statusValues.setCurrent = 0;
 			CW_MODE = false;
 			CR_MODE = false;
 			PULSE_MODE = false;
+			debugPrintln(&huart2, "Received STOP, STOPPING.....");
+		}
+
+		else if(strncmp(array[0], "reset" ,10) == 0){
+			debugPrintln(&huart2, "Resetting mAh, mWh and time");
+			my_statusValues.amperehours=0;
+			my_statusValues.watthours=0;
+			zeroTimeValue = HAL_GetTick();
+		}
+
+		else if(strncmp(array[0], "log" ,10) == 0){
+			statusInterval=stringToInt(array[1]);
 		}
 
 		else{
-			debugPrintln(&huart2, "Requested current is too high... Max current is 20 A");}
+			debugPrintln(&huart2, "Unknown command..., showing HELP");
+			printHELP(&huart2,my_statusValues);}
+			memset(&line_buffer, '\0', sizeof(line_buffer));
 		}
-
-	else if(strncmp(array[0], "cp" ,10) == 0){
-		my_statusValues.setPower = stringToInt(array[1]);
-		if (my_statusValues.setPower <= 250){
-			reportStatus = true;
-			CW_MODE = true;
-			CR_MODE = false;
-			PULSE_MODE = false;
-		}
-
-		else{
-			debugPrintln(&huart2, "Requested power is too high... Max power is 250 W");}
-		}
-
-
-
-
-	else if(strncmp(array[0], "cr" ,10) == 0){
-
-
-		  if (stringToInt(array[1]) > 0){
-			  my_statusValues.setResistance = stringToInt(array[1]);
-		  }
-		  else {
-				debugPrintln(&huart2, "Hey, can't divide with Zero!");
-
-		  }
-
-		reportStatus = true;
-		CR_MODE = true;
-		CW_MODE = false;
-		PULSE_MODE = false;
-
-		}
-
-
-
-
-
-
-
-
-
-	else if(strncmp(array[0], "status" ,10) == 0){
-		printStatus(my_statusValues, &huart2);}
-
-	else if((strncmp(array[0], "stop" ,10) == 0) || strncmp(array[0], "s" ,10) == 0){
-		reportStatus = false;
-		my_statusValues.setCurrent = 0;
-		CW_MODE = false;
-		CR_MODE = false;
-		PULSE_MODE = false;
-		debugPrintln(&huart2, "Received STOP, STOPPING.....");
-
-	}
-
-	else if(strncmp(array[0], "reset" ,10) == 0){
-		debugPrintln(&huart2, "Resetting mAh, mWh and time");
-		my_statusValues.amperehours=0;
-		my_statusValues.watthours=0;
-		zeroTimeValue = HAL_GetTick();
-	}
-
-	else if(strncmp(array[0], "log" ,10) == 0){
-		statusInterval=stringToInt(array[1]);}
-
-	else{
-		debugPrintln(&huart2, "Unknown command..., showing HELP");
-		printHELP(&huart2,my_statusValues);}
-	memset(&line_buffer, '\0', sizeof(line_buffer));
-}
-
-
 
 	  HAL_GPIO_TogglePin(GPIOB, LED_Pin); //Toggle LED
-
 	  //HAL_GPIO_TogglePin(GPIOA,  DISCHARGE_LED_Pin); //Toggle LED
 	  //HAL_GPIO_TogglePin(GPIOB,  OVERTEMP_Pin);
 
 
-
 	  if(PULSE_MODE){
-
 		  if(HAL_GetTick() - previousMillis_PULSE >= pulseLength){
-
-
 			  if (PULSE_TOGGLE){
 				  PULSE_TOGGLE = false;
 				  my_statusValues.setCurrent = pulseCurrent;
 				  HAL_GPIO_TogglePin(GPIOA, BILED_1_Pin); //Toggle LED
-
 			  }
 			  else{
 				  PULSE_TOGGLE = true;
 				  my_statusValues.setCurrent = 0;
 				  HAL_GPIO_TogglePin(GPIOA, BILED_2_Pin); //Toggle LED
-
 			  }
-
 			  previousMillis_PULSE = HAL_GetTick();
 		  }
 	  }
 
-
-
-
-
 	  if(CW_MODE){
 		  my_statusValues.setCurrent = 1000000.0*my_statusValues.setPower/my_statusValues.measuredVoltage;
-
 	  }
 
 	  if(CR_MODE){
 		  my_statusValues.setCurrent = 1000*my_statusValues.measuredVoltage/my_statusValues.setResistance;
 	  }
-
 
 	  if(reportStatus){
 		  if(HAL_GetTick() - previousMillis >= statusInterval){
@@ -524,12 +465,7 @@ if (line_valid==1){ // A new line has arrived
 	  }
 
 	  if (autoFanSpeedMode){
-
-
 		  my_statusValues.fanSpeed = 1.7*(my_statusValues.HEATSINK_Temp/10.0)-36;
-
-
-
 			if (my_statusValues.fanSpeed <= 15){
 				my_statusValues.fanSpeed = 0;
 			}
@@ -538,15 +474,14 @@ if (line_valid==1){ // A new line has arrived
 				my_statusValues.fanSpeed = 100;
 			}
 			autoFanSpeed(my_statusValues, &htim1);
-
 	  }
+
 	  if(my_statusValues.measuredVoltage<minVolt){
 			my_statusValues.setCurrent = 0;
 			reportStatus = false;
 			BEEP(&htim3);
 		  	debugPrintln(&huart2, "Min voltage reached. Stopped discharge");
 	  }
-
 
 	  if(my_statusValues.measuredPower/1000>maxWatt){
 			my_statusValues.setCurrent = 0;
@@ -562,20 +497,13 @@ if (line_valid==1){ // A new line has arrived
 			debugPrintln(&huart2, "OVERCURRENT, Stopped discharge");
 	  }
 
-
-
-
 	  if((my_statusValues.MOSFET1_Temp>maxTemp*10) || (my_statusValues.MOSFET2_Temp>maxTemp*10)){
 			my_statusValues.setCurrent = 0;
 			reportStatus = false;
 			BEEP(&htim3);
 			HAL_Delay(50);
-
 			debugPrintln(&huart2, "OVERTEMP, Stopped discharge");
 	  }
-
-
-
   }
   /* USER CODE END 3 */
 }
