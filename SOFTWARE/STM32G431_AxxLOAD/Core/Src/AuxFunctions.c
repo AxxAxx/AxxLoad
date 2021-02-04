@@ -35,11 +35,13 @@ float temperatureC;
 
 struct statusValues {
 	uint32_t  timestamp;
-	uint16_t  temperature;
+	uint16_t  HEATSINK_Temp;
 	uint16_t  setCurrent;
 	uint16_t   setPower;
+	uint16_t   setResistance;
 	uint16_t   measuredCurrent;
 	uint16_t   measuredVoltage;
+	uint16_t   measuredEquivalentResistance;
 	uint16_t   MOSFET1_Temp;
 	uint16_t   MOSFET2_Temp;
 	uint16_t   PCB_Temp;
@@ -88,7 +90,7 @@ void printHELP(UART_HandleTypeDef *huart, struct statusValues statusValues_1){
 	  debugPrintln(huart, "|      Version 2.2 2020                    |");
 	  debugPrintln(huart, "|---------- Availible Commands ------------|");
 	  debugPrintln(huart, "      cc <mA> - Constant current");
-	  debugPrintln(huart, "      cp <mW> - Constant power(To be implemented..)");
+	  debugPrintln(huart, "      cp <W> - Constant power(To be implemented..)");
 	  debugPrintln(huart, "    cr <mOhm> - Constant resistance(To be implemented..)");
 	  debugPrintln(huart, " pm <ms> <mA> - PulseMode, Set PULSE length and amplitude");
 	  debugPrintln(huart, "     fs <%/A> - Fanspeed, (0-100% OR \"A\" for Automatic) - Default: A");
@@ -100,7 +102,21 @@ void printHELP(UART_HandleTypeDef *huart, struct statusValues statusValues_1){
 	  debugPrintln(huart, "         help - Show this help");
 	  debugPrintln(huart, " ");
 	  debugPrintln(huart, "Status is printed out as:");
-	  debugPrintln(huart, "Timestamp[ms]; Temperature - Heatsink[deg C]; Temperature - MosFET1[deg C]; Temperature - MosFET2[deg C]; Temperature - PCB[deg C]; Set current[mA]; Measured current[mA]; Measured Voltage[mV]; Measured Power[mW]; Amperehours[mAh]; Watthours[mWh]; Fanspeed [%]");
+	  debugPrintln(huart, "Timestamp [ms]");
+	  debugPrintln(huart, "Temperature - Heatsink [deg C]");
+	  debugPrintln(huart, "Temperature - MosFET1 [deg C]");
+	  debugPrintln(huart, "Temperature - MosFET2 [deg C]");
+	  debugPrintln(huart, "Temperature - PCB [deg C]");
+	  debugPrintln(huart, "Set current [mA]");
+	  debugPrintln(huart, "Measured current [mA]");
+	  debugPrintln(huart, "Measured Voltage [mV]");
+	  debugPrintln(huart, "Measured Power [mW]");
+	  debugPrintln(huart, "Measured Equivalent Resistance [OHM]");
+	  debugPrintln(huart, "Discharged Amperehours [mAh]");
+	  debugPrintln(huart, "Discharged Watthours [mWh]");
+	  debugPrintln(huart, "Fan Speed [%]");
+
+
 	  printStatus(statusValues_1, huart);
 	  debugPrintln(huart, "|------------------------------------------|");
 	  debugPrintln(huart, " ");
@@ -169,7 +185,7 @@ void printStatus(struct statusValues statusValues_1, UART_HandleTypeDef *huart){
 
 		//Temperature - Heatsink[deg C]
 	  	//gcvt((statusValues_1.temperature/10.0), 6, buffer);
-  		sprintf(buffer, "%5.2f", statusValues_1.temperature/10.0);
+  		sprintf(buffer, "%5.2f", statusValues_1.HEATSINK_Temp/10.0);
 	  	debugPrint(huart, buffer);
 	  	memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
@@ -227,6 +243,23 @@ void printStatus(struct statusValues statusValues_1, UART_HandleTypeDef *huart){
   		debugPrint(huart, buffer);
 		memset(&buffer, '\0', sizeof(buffer));
 		debugPrint(huart, "   ");
+
+
+
+
+		//Measured Equivalent Resistance[mOHM]
+		//sprintf(buffer, "%hu", statusValues_1.measuredPower);
+	  	//gcvt((statusValues_1.measuredPower/1.0), 6, buffer);
+  		sprintf(buffer, "%5.2f", statusValues_1.measuredEquivalentResistance/1000.0);
+  		debugPrint(huart, buffer);
+		memset(&buffer, '\0', sizeof(buffer));
+		debugPrint(huart, "   ");
+
+
+
+
+
+
 
 		//Amperehours[mAh]
 		//sprintf(buffer, "%hu", statusValues_1.amperehours);

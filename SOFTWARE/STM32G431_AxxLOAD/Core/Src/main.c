@@ -94,7 +94,7 @@ float currentCompensationConstant = 1.01125769786;
 float temperatureCompensationConstant = 1; //VOLT: 1.98 (16 deg) - 0.065 (152 deg)
 unsigned char ADSwrite[6];
 
-uint16_t maxTemp = 100;
+uint16_t maxTemp = 120;
 uint16_t maxAmpDiff = 0;
 uint16_t maxWatt = 500;
 uint16_t maxCurrent = 20;
@@ -113,11 +113,13 @@ int16_t ADS11115_TEMPERATURE = 0;
 
 struct statusValues {
 	uint32_t   timestamp;
-	uint16_t   temperature;
+	uint16_t   HEATSINK_Temp;
 	uint16_t   setCurrent;
 	uint16_t   setPower;
+	uint16_t   setResistance;
 	uint16_t   measuredCurrent;
 	uint16_t   measuredVoltage;
+	uint16_t   measuredEquivalentResistance;
 	uint16_t   MOSFET1_Temp;
 	uint16_t   MOSFET2_Temp;
 	uint16_t   PCB_Temp;
@@ -310,7 +312,8 @@ int main(void)
 
 	my_statusValues.measuredVoltage = voltage[0] * voltageCompensationConstant;
 	my_statusValues.measuredCurrent = voltage[1] * currentCompensationConstant;
-	my_statusValues.temperature = adc2Temperature(voltage[2],16628);
+	my_statusValues.measuredEquivalentResistance = 1000*my_statusValues.measuredVoltage/my_statusValues.measuredCurrent;
+	my_statusValues.HEATSINK_Temp = adc2Temperature(voltage[2],16628);
 
 	my_statusValues.measuredPower = (my_statusValues.measuredVoltage*my_statusValues.measuredCurrent)/1000;
 	my_statusValues.timestamp = (HAL_GetTick()-zeroTimeValue);
@@ -388,6 +391,9 @@ if (line_valid==1){ // A new line has arrived
 		if (stringToInt(array[1]) <= 20000){
 			my_statusValues.setCurrent = stringToInt(array[1]);
 			reportStatus = true;
+			CW_MODE = false;
+			CR_MODE = false;
+			PULSE_MODE = false;
 		}
 
 		else{
@@ -397,14 +403,42 @@ if (line_valid==1){ // A new line has arrived
 	else if(strncmp(array[0], "cp" ,10) == 0){
 		my_statusValues.setPower = stringToInt(array[1]);
 		if (my_statusValues.setPower <= 250){
-			my_statusValues.setCurrent = 1000000.0*my_statusValues.setPower/my_statusValues.measuredVoltage;
 			reportStatus = true;
 			CW_MODE = true;
+			CR_MODE = false;
+			PULSE_MODE = false;
 		}
 
 		else{
 			debugPrintln(&huart2, "Requested power is too high... Max power is 250 W");}
 		}
+
+
+
+
+	else if(strncmp(array[0], "cr" ,10) == 0){
+
+
+		  if (stringToInt(array[1]) > 0){
+			  my_statusValues.setResistance = stringToInt(array[1]);
+		  }
+		  else {
+				debugPrintln(&huart2, "Hey, can't divide with Zero!");
+
+		  }
+
+		reportStatus = true;
+		CR_MODE = true;
+		CW_MODE = false;
+		PULSE_MODE = false;
+
+		}
+
+
+
+
+
+
 
 
 
@@ -415,6 +449,7 @@ if (line_valid==1){ // A new line has arrived
 		reportStatus = false;
 		my_statusValues.setCurrent = 0;
 		CW_MODE = false;
+		CR_MODE = false;
 		PULSE_MODE = false;
 		debugPrintln(&huart2, "Received STOP, STOPPING.....");
 
@@ -468,6 +503,19 @@ if (line_valid==1){ // A new line has arrived
 	  }
 
 
+
+
+
+	  if(CW_MODE){
+		  my_statusValues.setCurrent = 1000000.0*my_statusValues.setPower/my_statusValues.measuredVoltage;
+
+	  }
+
+	  if(CR_MODE){
+		  my_statusValues.setCurrent = 1000*my_statusValues.measuredVoltage/my_statusValues.setResistance;
+	  }
+
+
 	  if(reportStatus){
 		  if(HAL_GetTick() - previousMillis >= statusInterval){
 			  printStatus(my_statusValues, &huart2);
@@ -478,11 +526,11 @@ if (line_valid==1){ // A new line has arrived
 	  if (autoFanSpeedMode){
 
 
-		  my_statusValues.fanSpeed = 1.7*(my_statusValues.temperature/10.0)-36;
+		  my_statusValues.fanSpeed = 1.7*(my_statusValues.HEATSINK_Temp/10.0)-36;
 
 
 
-			if (my_statusValues.fanSpeed <= 0){
+			if (my_statusValues.fanSpeed <= 15){
 				my_statusValues.fanSpeed = 0;
 			}
 
@@ -515,7 +563,9 @@ if (line_valid==1){ // A new line has arrived
 	  }
 
 
-	  if(my_statusValues.temperature>maxTemp*10){
+
+
+	  if((my_statusValues.MOSFET1_Temp>maxTemp*10) || (my_statusValues.MOSFET2_Temp>maxTemp*10)){
 			my_statusValues.setCurrent = 0;
 			reportStatus = false;
 			BEEP(&htim3);
