@@ -95,7 +95,7 @@ unsigned char ADSwrite[6];
 
 uint16_t maxTemp = 120;
 uint16_t maxAmpDiff = 0;
-uint16_t maxWatt = 500;
+uint16_t maxWatt = 250;
 uint16_t maxCurrent = 20;
 
 uint16_t minVolt = 0;
