@@ -409,6 +409,8 @@ int main(void)
 			CR_MODE = false;
 			PULSE_MODE = false;
 			debugPrintln(&huart2, "Received STOP, STOPPING.....");
+			printStatus(my_statusValues, &huart2);
+
 		}
 
 		else if(strncmp(array[0], "reset" ,10) == 0){
