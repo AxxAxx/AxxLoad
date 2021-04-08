@@ -1562,7 +1562,7 @@ void printHELP(UART_HandleTypeDef *huart, struct statusValues statusValues_1){
  800122e:	493f      	ldr	r1, [pc, #252]	; (800132c <printHELP+0x160>)
  8001230:	6878      	ldr	r0, [r7, #4]
  8001232:	f7ff fed1 	bl	8000fd8 <debugPrintln>
-	  debugPrintln(huart, "         stop - Turn current off");
+	  debugPrintln(huart, "       stop,s - Turn current off");
  8001236:	493e      	ldr	r1, [pc, #248]	; (8001330 <printHELP+0x164>)
  8001238:	6878      	ldr	r0, [r7, #4]
  800123a:	f7ff fecd 	bl	8000fd8 <debugPrintln>

@@ -94,7 +94,7 @@ void printHELP(UART_HandleTypeDef *huart, struct statusValues statusValues_1){
 	  debugPrintln(huart, "     fs <%/A> - Fanspeed, (0-100% OR \"A\" for Automatic) - Default: A");
 	  debugPrintln(huart, "      mv <mV> - Set MIN voltage - Default: 0 mV");
 	  debugPrintln(huart, "     log <ms> - Interval of printing status");
-	  debugPrintln(huart, "         stop - Turn current off");
+	  debugPrintln(huart, "       stop,s - Turn current off");
 	  debugPrintln(huart, "        reset - Reset charge/energy counters");
 	  debugPrintln(huart, "       status - Print status");
 	  debugPrintln(huart, "         help - Show this help");
