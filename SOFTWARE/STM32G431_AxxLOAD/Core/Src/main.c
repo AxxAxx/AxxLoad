@@ -284,7 +284,6 @@ int main(void)
 	HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
 	my_statusValues.MOSFET2_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc2),3500);
 
-	HAL_ADC_Start(&hadc2);
 	HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
 	my_statusValues.PCB_Temp = adc2Temperature(HAL_ADC_GetValue(&hadc2),3500);
 
